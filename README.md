@@ -116,6 +116,114 @@ Default rules (configurable):
 - 3:2 blackjack payout
 - 75% penetration
 
+## Custom Strategies
+
+Strategies are composed of three components:
+
+### 1. Counting System
+
+Track cards to inform betting decisions. Create a new counter in `strategies/counting/`:
+
+```python
+from strategies.counting.base import CountingSystem
+
+class MyCounter(CountingSystem):
+    def count_card(self, card) -> None:
+        # Update running_count based on card.value or card.rank
+        if card.value <= 6:
+            self.running_count += 1
+        elif card.value >= 10:
+            self.running_count -= 1
+        self.cards_seen += 1
+
+    def get_true_count(self) -> int:
+        decks_remaining = (self.n_decks * 52 - self.cards_seen) / 52
+        return int(self.running_count / max(decks_remaining, 0.5))
+```
+
+### 2. Bet Spread
+
+Define how bet size changes with the count using `BetSpread`:
+
+```python
+from strategies.bet_spread import BetSpread
+
+# Bet $10 at count 0, $25 at count 2, $50 at count 3+
+spread = BetSpread(
+    spread={2: 25, 3: 50},
+    min_bet=10,
+    max_bet=300
+)
+```
+
+### 3. Exit Strategy
+
+Define when to leave the table. Create in `strategies/exit/`:
+
+```python
+from strategies.exit.base import ExitStrategy
+
+class MyExitStrategy(ExitStrategy):
+    def __init__(self, starting_bankroll: float, target_pct: float = 0.5):
+        super().__init__(starting_bankroll)
+        self.target = starting_bankroll * (1 + target_pct)
+
+    def should_exit(self, bankroll: float) -> bool:
+        return bankroll >= self.target
+```
+
+### Composing a Strategy
+
+Combine components into a `ComposableStrategy`:
+
+```python
+from strategies import ComposableStrategy
+from strategies.counting import HiLoCounter
+from strategies.bet_spread import BetSpread
+from strategies.exit import DoubleExitStrategy
+from strategies.playing import BasicStrategy
+
+strategy = ComposableStrategy(
+    bankroll=1000,
+    playing_strategy=BasicStrategy(h17=True),
+    counting_system=HiLoCounter(n_decks=8),
+    bet_spread=BetSpread({1: 20, 2: 40, 3: 80}, min_bet=10, max_bet=300),
+    exit_strategy=DoubleExitStrategy(starting_bankroll=1000),
+)
+```
+
+### Adding to Presets
+
+To include your strategy in the simulator, add it to `strategies/presets.py`:
+
+```python
+def create_strategy(name: str, bankroll: float, ...) -> ComposableStrategy:
+    # Add your strategy configuration here
+    if name == "My Custom Strategy":
+        return ComposableStrategy(
+            bankroll=bankroll,
+            playing_strategy=BasicStrategy(h17=h17),
+            counting_system=MyCounter(n_decks),
+            bet_spread=BetSpread({2: 25, 3: 50}, table_min, table_max),
+        )
+```
+
+### Testing Your Strategy
+
+Run a quick test:
+
+```python
+from core import Blackjack
+
+game = Blackjack(strategy, n_decks=8, table_min=10, table_max=300)
+results = game.play(max_rounds=1000)
+
+print(f"Profit: ${results['profit']:.2f}")
+print(f"Win rate: {results['win_rate']:.1f}%")
+```
+
+Or add it to presets and use the simulator for statistical analysis across many games.
+
 ## Testing
 
 ```bash

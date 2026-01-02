@@ -1,6 +1,6 @@
 # Blackjack Strategy Simulator
 
-[![Tests](https://github.com/greer/blackjack/actions/workflows/tests.yml/badge.svg)](https://github.com/greer/blackjack/actions/workflows/tests.yml)
+[![Tests](https://github.com/greerviau/blackjack/actions/workflows/tests.yml/badge.svg)](https://github.com/greerviau/blackjack/actions/workflows/tests.yml)
 
 A blackjack simulator for testing and comparing different playing, counting, and betting strategies.
 
